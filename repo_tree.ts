@@ -1,5 +1,6 @@
 import { join, resolve } from 'https://deno.land/std@0.224.0/path/mod.ts';
-import { walk, type WalkEntry } from 'https://deno.land/std@0.224.0/fs/walk.ts';
+import { type WalkEntry } from 'https://deno.land/std@0.224.0/fs/walk.ts';
+import { FileSystem } from './file_system.ts';
 
 // --- Enums ---
 enum ItemType {
@@ -24,6 +25,7 @@ interface ItemInfo {
   gitStatus?: GitStatus;
 }
 
+
 // --- Utility Functions ---
 
 /**
@@ -31,11 +33,12 @@ interface ItemInfo {
  * Checks if a directory is a Git repository.
  * @param path The full path to the item.
  * @param isDirectory True if the item is a directory.
+ * @param fileSystem The filesystem implementation.
  * @returns The ItemType of the item.
  */
-async function getItemType(path: string, isDirectory: boolean): Promise<ItemType> {
+async function getItemType(path: string, isDirectory: boolean, fileSystem: FileSystem): Promise<ItemType> {
   if (isDirectory) {
-    const isGitRepo = await testGitRepository(path);
+    const isGitRepo = await testGitRepository(path, fileSystem);
     if (isGitRepo) {
       return ItemType.RepoDirectory;
     }
@@ -47,12 +50,13 @@ async function getItemType(path: string, isDirectory: boolean): Promise<ItemType
 /**
  * Tests if a given path is a Git repository by checking for a .git directory.
  * @param path The path to check.
+ * @param fileSystem The filesystem implementation.
  * @returns True if it's a Git repository, false otherwise.
  */
-async function testGitRepository(path: string): Promise<boolean> {
+async function testGitRepository(path: string, fileSystem: FileSystem): Promise<boolean> {
   try {
     const gitDir = join(path, '.git');
-    const stat = await Deno.stat(gitDir);
+    const stat = await fileSystem.stat(gitDir);
     return stat.isDirectory;
   } catch (error) {
     if (error instanceof Deno.errors.NotFound) {
@@ -65,33 +69,33 @@ async function testGitRepository(path: string): Promise<boolean> {
 /**
  * Gets the Git status of a repository.
  * @param path The path to the Git repository.
+ * @param fileSystem The filesystem implementation.
  * @returns An object containing `aheadBy` and `hasWorkingChanges`.
  */
-async function getGitStatus(path: string): Promise<GitStatus> {
-  const originalCwd = Deno.cwd();
+async function getGitStatus(path: string, fileSystem: FileSystem): Promise<GitStatus> {
+  const originalCwd = fileSystem.cwd();
   try {
-    Deno.chdir(path); // Change directory to run git commands in the repo
+    fileSystem.chdir(path); // Change directory to run git commands in the repo
 
     // Check for uncommitted changes
-    const statusCmd = new Deno.Command('git', { args: ['status', '--porcelain'] });
-    const statusOutput = await statusCmd.output();
+    const statusOutput = await fileSystem.runCommand(['git', 'status', '--porcelain']);
     const hasWorkingChanges = new TextDecoder().decode(statusOutput.stdout).trim().length > 0;
 
     // Check for ahead/behind status
-    const branchCmd = new Deno.Command('git', { args: ['rev-parse', '--abbrev-ref', 'HEAD'] });
-    const branchOutput = await branchCmd.output();
+    const branchOutput = await fileSystem.runCommand(['git', 'rev-parse', '--abbrev-ref', 'HEAD']);
     const currentBranch = new TextDecoder().decode(branchOutput.stdout).trim();
 
-    const remoteCmd = new Deno.Command('git', { args: ['config', `branch.${currentBranch}.remote`] });
-    const remoteOutput = await remoteCmd.output();
+    const remoteOutput = await fileSystem.runCommand(['git', 'config', `branch.${currentBranch}.remote`]);
     const remoteName = new TextDecoder().decode(remoteOutput.stdout).trim();
 
     let aheadBy = 0;
     if (remoteName) {
-      const remoteBranchCmd = new Deno.Command('git', {
-        args: ['rev-list', '--left-right', `${remoteName}/${currentBranch}...${currentBranch}`],
-      });
-      const remoteBranchOutput = await remoteBranchCmd.output();
+      const remoteBranchOutput = await fileSystem.runCommand([
+        'git',
+        'rev-list',
+        '--left-right',
+        `${remoteName}/${currentBranch}...${currentBranch}`,
+      ]);
       const remoteBranchOutputStr = new TextDecoder().decode(remoteBranchOutput.stdout).trim();
       aheadBy = remoteBranchOutputStr.split('\n').filter(line => line.startsWith('>')).length;
     }
@@ -101,7 +105,7 @@ async function getGitStatus(path: string): Promise<GitStatus> {
     console.error(`Error getting Git status for ${path}:`, error);
     return { aheadBy: 0, hasWorkingChanges: false };
   } finally {
-    Deno.chdir(originalCwd); // Change back to original directory
+    fileSystem.chdir(originalCwd); // Change back to original directory
   }
 }
 
@@ -112,6 +116,7 @@ async function getGitStatus(path: string): Promise<GitStatus> {
  * @param maxDepth The maximum recursion depth.
  * @param skipDirectoriesSet A set of directory names to skip.
  * @param includeHidden Whether to include hidden files/directories.
+ * @param fileSystem The filesystem implementation.
  * @returns The ItemInfo object for the current item and its children.
  */
 async function getItemInfoTree(
@@ -120,10 +125,11 @@ async function getItemInfoTree(
   maxDepth: number,
   skipDirectoriesSet: Set<string>,
   includeHidden: boolean,
+  fileSystem: FileSystem,
 ): Promise<ItemInfo> {
   const itemInfo: ItemInfo = {
     name: entry.name,
-    type: await getItemType(entry.path, entry.isDirectory),
+    type: await getItemType(entry.path, entry.isDirectory, fileSystem),
     children: [],
     allPathsLeadToRepo: false,
     containsRepo: false,
@@ -132,7 +138,7 @@ async function getItemInfoTree(
   itemInfo.allPathsLeadToRepo = itemInfo.type === ItemType.RepoDirectory;
 
   if (itemInfo.type === ItemType.RepoDirectory) {
-    itemInfo.gitStatus = await getGitStatus(entry.path);
+    itemInfo.gitStatus = await getGitStatus(entry.path, fileSystem);
   }
 
   const isDirectory = itemInfo.type === ItemType.Directory || itemInfo.type === ItemType.RepoDirectory;
@@ -145,17 +151,24 @@ async function getItemInfoTree(
     }
 
     try {
-      for await (const childEntry of Deno.readDir(entry.path)) {
+      for await (const childEntry of fileSystem.readDir(entry.path)) {
         if (!includeHidden && childEntry.name.startsWith('.')) {
-          continue; // Skip hidden files/directories if not included
+          continue;
         }
         const childPath = join(entry.path, childEntry.name);
         const childItemInfo = await getItemInfoTree(
-          { path: childPath, name: childEntry.name, isDirectory: childEntry.isDirectory, isFile: childEntry.isFile, isSymlink: childEntry.isSymlink },
+          {
+            path: childPath,
+            name: childEntry.name,
+            isDirectory: childEntry.isDirectory,
+            isFile: childEntry.isFile,
+            isSymlink: childEntry.isSymlink,
+          },
           currentDepth + 1,
           maxDepth,
           skipDirectoriesSet,
-          includeHidden
+          includeHidden,
+          fileSystem,
         );
         itemInfo.children.push(childItemInfo);
 
@@ -180,88 +193,6 @@ async function getItemInfoTree(
   return itemInfo;
 }
 
-/**
- * Formats an item's name based on its type, specifically for items within a repository context.
- * @param item The ItemInfo object.
- * @returns The formatted name string.
- */
-function formatRepoLevelItem(item: ItemInfo): string {
-  switch (item.type) {
-    case ItemType.File:
-      return `\x1b[30m${item.name}\x1b[0m`; // Black
-    case ItemType.Directory:
-      return `\x1b[37m${item.name}\x1b[0m`; // White
-    case ItemType.RepoDirectory:
-      return formatRepoItem(item);
-    default:
-      return `${item.name} (unknown item type)`;
-  }
-}
-
-/**
- * Formats a repository item's name based on its Git status.
- * @param item The ItemInfo object for a repository.
- * @returns The formatted name string (red for dirty, green for clean).
- */
-function formatRepoItem(item: ItemInfo): string {
-  const gitStatus = item.gitStatus;
-  const isSynced = gitStatus?.aheadBy === 0;
-  const isDirty = gitStatus?.hasWorkingChanges || !isSynced;
-
-  if (isDirty) {
-    return `\x1b[31m${item.name}\x1b[0m`; // Red
-  } else {
-    return `\x1b[32m${item.name}\x1b[0m`; // Green
-  }
-}
-
-/**
- * Formats an item's name based on its type for default display.
- * @param item The ItemInfo object.
- * @returns The formatted name string.
- */
-function formatDefaultItem(item: ItemInfo): string {
-  switch (item.type) {
-    case ItemType.File:
-      return `\x1b[30m${item.name}\x1b[0m`; // Black
-    default:
-      return item.name;
-  }
-}
-
-/**
- * Recursively converts the ItemInfo tree to a displayable object.
- * This is a simplified version of the PowerShell `convertFromItemInfoTree` and `Out-Tree` logic.
- * @param root The root ItemInfo object.
- * @param indent The current indentation level.
- * @param prefix The prefix for the current line (e.g., '├── ', '└── ').
- */
-function displayItemInfoTree(root: ItemInfo, indent: string = '', prefix: string = ''): void {
-  let formattedName: string;
-  if (root.containsRepo) {
-    formattedName = formatRepoLevelItem(root);
-  } else {
-    formattedName = formatDefaultItem(root);
-  }
-
-  // Only log if it's not the initial hidden root or if it's the actual root being displayed
-  if (indent !== '') {
-    console.log(`${indent}${prefix}${formattedName}`);
-  } else if (prefix === '') { // This is the actual root item
-    console.log(formattedName);
-  }
-
-
-  if (root.children.length > 0) {
-    root.children.forEach((child, index) => {
-      const isLastChild = index === root.children.length - 1;
-      const newPrefix = isLastChild ? '└── ' : '├── ';
-      const newIndent = indent + (prefix === '├── ' ? '│   ' : '    ');
-      displayItemInfoTree(child, newIndent, newPrefix);
-    });
-  }
-}
-
 // --- Main Function ---
 
 interface ShowRepositoryTreeOptions {
@@ -269,6 +200,7 @@ interface ShowRepositoryTreeOptions {
   skipDirectories?: string[];
   depth?: number;
   includeHidden?: boolean;
+  fileSystem?: FileSystem;
 }
 
 /**
@@ -276,8 +208,9 @@ interface ShowRepositoryTreeOptions {
  * @param options Options for controlling the tree display.
  */
 async function showRepositoryTree(options: ShowRepositoryTreeOptions = {}): Promise<void> {
+  const fileSystem = options.fileSystem || new DenoFileSystem();
   const {
-    path = Deno.cwd(),
+    path = fileSystem.cwd(),
     skipDirectories = ['node_modules', 'build', '.gradle'],
     depth = 10,
     includeHidden = false,
@@ -288,7 +221,7 @@ async function showRepositoryTree(options: ShowRepositoryTreeOptions = {}): Prom
 
   let rootEntry: WalkEntry;
   try {
-    const stat = await Deno.stat(resolvedPath);
+    const stat = await fileSystem.stat(resolvedPath);
     if (stat.isDirectory) {
       rootEntry = {
         path: resolvedPath,
@@ -318,20 +251,15 @@ async function showRepositoryTree(options: ShowRepositoryTreeOptions = {}): Prom
     return;
   }
 
-  const root = await getItemInfoTree(rootEntry, 0, depth, skipDirectoriesSet, includeHidden);
+  const root = await getItemInfoTree(rootEntry, 0, depth, skipDirectoriesSet, includeHidden, fileSystem);
 
-  // The original PowerShell script had a hidden root that then displayed its children.
-  // We'll mimic this by creating a "dummy" root for the display function if the initial path
-  // is a directory and has children. Otherwise, we display the item itself.
   if (root.isDirectory && root.children.length > 0) {
-    // Treat the direct children of the specified path as the top level for display
     root.children.forEach((child, index) => {
       const isLastChild = index === root.children.length - 1;
       const prefix = isLastChild ? '└── ' : '├── ';
       displayItemInfoTree(child, '', prefix);
     });
   } else {
-    // If the path is a file or an empty directory, just display the item itself
     displayItemInfoTree(root);
   }
 }
