@@ -1,23 +1,8 @@
 import { join, resolve } from 'https://deno.land/std@0.224.0/path/mod.ts';
 import { type WalkEntry } from 'https://deno.land/std@0.224.0/fs/walk.ts';
 import { FileSystem } from './file_system.ts';
+import { ItemType } from './types.ts';
 
-// --- Enums ---
-enum ItemType {
-  File,
-  Directory,
-  RepoDirectory,
-  Unknown,
-}
-
-interface ItemInfo {
-  name: string;
-  type: ItemType;
-  children: ItemInfo[];
-  allPathsLeadToRepo: boolean;
-  containsRepo: boolean;
-  gitStatus?: GitStatus;
-}
 
 
 // --- Utility Functions ---
