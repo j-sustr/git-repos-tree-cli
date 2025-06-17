@@ -1,7 +1,9 @@
 import { join, resolve } from 'https://deno.land/std@0.224.0/path/mod.ts';
 import { type WalkEntry } from 'https://deno.land/std@0.224.0/fs/walk.ts';
-import { FileSystem } from './file_system.ts';
-import { ItemType } from './types.ts';
+import { DenoFileSystem, FileSystem } from './file_system.ts';
+import { ItemInfo, ItemType } from './types.ts';
+import { getGitStatus, testGitRepository } from "./git.ts";
+import { displayItemInfoTree } from "./format.ts";
 
 
 
@@ -125,7 +127,7 @@ interface ShowRepositoryTreeOptions {
  * Displays a tree-like structure of the file system, highlighting Git repositories.
  * @param options Options for controlling the tree display.
  */
-async function showRepositoryTree(options: ShowRepositoryTreeOptions = {}): Promise<void> {
+export async function showRepositoryTree(options: ShowRepositoryTreeOptions = {}): Promise<void> {
   const fileSystem = options.fileSystem || new DenoFileSystem();
   const {
     path = fileSystem.cwd(),
