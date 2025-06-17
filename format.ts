@@ -1,3 +1,4 @@
+import { ItemInfo, ItemType } from "./types.ts";
 
 
 /**
@@ -56,7 +57,7 @@ function formatDefaultItem(item: ItemInfo): string {
  * @param indent The current indentation level.
  * @param prefix The prefix for the current line (e.g., '├── ', '└── ').
  */
-function displayItemInfoTree(root: ItemInfo, indent: string = '', prefix: string = ''): void {
+export function displayItemInfoTree(root: ItemInfo, indent: string = '', prefix: string = ''): void {
   let formattedName: string;
   if (root.containsRepo) {
     formattedName = formatRepoLevelItem(root);

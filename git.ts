@@ -1,3 +1,5 @@
+import { FileSystem } from "./file_system.ts";
+import { join } from "jsr:@std/path";
 
 // --- Interfaces ---
 interface GitStatus {
@@ -11,7 +13,7 @@ interface GitStatus {
  * @param fileSystem The filesystem implementation.
  * @returns True if it's a Git repository, false otherwise.
  */
-async function testGitRepository(path: string, fileSystem: FileSystem): Promise<boolean> {
+export async function testGitRepository(path: string, fileSystem: FileSystem): Promise<boolean> {
   try {
     const gitDir = join(path, '.git');
     const stat = await fileSystem.stat(gitDir);
@@ -30,7 +32,7 @@ async function testGitRepository(path: string, fileSystem: FileSystem): Promise<
  * @param fileSystem The filesystem implementation.
  * @returns An object containing `aheadBy` and `hasWorkingChanges`.
  */
-async function getGitStatus(path: string, fileSystem: FileSystem): Promise<GitStatus> {
+export async function getGitStatus(path: string, fileSystem: FileSystem): Promise<GitStatus> {
   const originalCwd = fileSystem.cwd();
   try {
     fileSystem.chdir(path); // Change directory to run git commands in the repo
