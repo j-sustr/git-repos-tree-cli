@@ -9,6 +9,7 @@ export enum ItemType {
 export interface ItemInfo {
     name: string;
     type: ItemType;
+    isDirectory?: boolean;
     children: ItemInfo[];
     allPathsLeadToRepo: boolean;
     containsRepo: boolean;
