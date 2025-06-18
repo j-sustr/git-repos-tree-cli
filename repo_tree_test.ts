@@ -1,18 +1,11 @@
-import {
-  assert,
-  assertEquals,
-  assertFalse,
-  assertStringIncludes,
-} from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { spy } from "https://deno.land/std@0.224.0/testing/mock.ts";
-
 import * as gitModule from "./git.ts";
 import * as formatModule from "./format.ts";
-import { FileSystem, ItemType } from "./file_system.ts";
+import { FileSystem } from "./file_system.ts";
 import { MockFileSystem } from "./mocks/file_system_mock.ts";
-import { showRepositoryTree } from "./show_repo_tree.ts"; // Assuming this is the module under test
+import { showRepositoryTree } from "./repo_tree.ts";
+import { ItemType } from "./types.ts";
+import { assertEquals } from "jsr:@std/assert";
 
-// Mocks for external functions that show_repo_tree.ts depends on
 let mockTestGitRepositoryResult: boolean;
 let mockGetGitStatusResult: gitModule.GitStatus;
 

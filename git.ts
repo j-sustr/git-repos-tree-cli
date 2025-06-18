@@ -2,9 +2,14 @@ import { FileSystem } from "./file_system.ts";
 import { join } from "jsr:@std/path";
 
 // --- Interfaces ---
-interface GitStatus {
+export interface GitStatus {
   aheadBy: number;
   hasWorkingChanges: boolean;
+  modified?: string[];
+  untracked: string[];
+  ahead: number;
+  behind: number;
+  files: string[];
 }
 
 /**
