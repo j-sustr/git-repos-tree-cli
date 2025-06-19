@@ -1,74 +1,74 @@
 import { ItemInfo, ItemType } from "./types.ts";
 
-
 /**
- * Formats an item's name based on its type, specifically for items within a repository context.
+ * Formats an item's name with console colors based on its type within a repository.
  * @param item The ItemInfo object.
- * @returns The formatted name string.
+ * @returns An array containing the formatted name and its style string.
  */
-function formatRepoLevelItem(item: ItemInfo): string {
+function formatRepoLevelItem(item: ItemInfo): [string, string] {
   switch (item.type) {
     case ItemType.File:
-      return `\x1b[30m${item.name}\x1b[0m`; // Black
+      return [item.name, "color: black;"];
     case ItemType.Directory:
-      return `\x1b[37m${item.name}\x1b[0m`; // White
+      return [item.name, "color: white;"];
     case ItemType.RepoDirectory:
       return formatRepoItem(item);
     default:
-      return `${item.name} (unknown item type)`;
+      return [`${item.name} (unknown item type)`, ""];
   }
 }
 
 /**
- * Formats a repository item's name based on its Git status.
+ * Formats a repository item's name with console colors based on its Git status.
  * @param item The ItemInfo object for a repository.
- * @returns The formatted name string (red for dirty, green for clean).
+ * @returns An array containing the formatted name and its style string (red for dirty, green for clean).
  */
-function formatRepoItem(item: ItemInfo): string {
+function formatRepoItem(item: ItemInfo): [string, string] {
   const gitStatus = item.gitStatus;
   const isSynced = gitStatus?.aheadBy === 0;
   const isDirty = gitStatus?.hasWorkingChanges || !isSynced;
 
   if (isDirty) {
-    return `\x1b[31m${item.name}\x1b[0m`; // Red
+    return [item.name, "color: red;"];
   } else {
-    return `\x1b[32m${item.name}\x1b[0m`; // Green
+    return [item.name, "color: green;"];
   }
 }
 
 /**
- * Formats an item's name based on its type for default display.
+ * Formats an item's name with console colors for default display.
  * @param item The ItemInfo object.
- * @returns The formatted name string.
+ * @returns An array containing the formatted name and its style string.
  */
-function formatDefaultItem(item: ItemInfo): string {
+function formatDefaultItem(item: ItemInfo): [string, string] {
   switch (item.type) {
     case ItemType.File:
-      return `\x1b[30m${item.name}\x1b[0m`; // Black
+      return [item.name, "color: black;"];
     default:
-      return item.name;
+      return [item.name, ""];
   }
 }
 
 /**
- * Recursively converts the ItemInfo tree to a displayable object.
- * This is a simplified version of the PowerShell `convertFromItemInfoTree` and `Out-Tree` logic.
+ * Recursively converts the ItemInfo tree to a displayable object using console.log with styles.
  * @param root The root ItemInfo object.
  * @param indent The current indentation level.
  * @param prefix The prefix for the current line (e.g., '├── ', '└── ').
  */
 export function displayItemInfoTree(root: ItemInfo, indent: string = '', prefix: string = ''): void {
   let formattedName: string;
+  let style: string;
+
   if (root.containsRepo) {
-    formattedName = formatRepoLevelItem(root);
+    [formattedName, style] = formatRepoLevelItem(root);
   } else {
-    formattedName = formatDefaultItem(root);
+    [formattedName, style] = formatDefaultItem(root);
   }
 
   if (indent !== '') {
-    console.log(`${indent}${prefix}${formattedName}`);
+    console.log(`${indent}${prefix}%c${formattedName}`, style);
   } else if (prefix === '') {
-    console.log(formattedName);
+    console.log(`%c${formattedName}`, style);
   }
 
   if (root.children.length > 0) {

@@ -6,6 +6,10 @@ import { Logger } from "./logger.ts";
 export interface GitStatus {
   hasUncommittedChanges: boolean;
   hasUntrackedFiles: boolean;
+
+  // instead
+  hasWorkingChanges: boolean;
+  hasUnpushedChanges?: boolean;
 }
 
 export class GitService {
