@@ -12,7 +12,6 @@ import { ItemType } from "./types.ts";
 describe("showRepositoryTree", () => {
   let mockFs: MockFileSystem;
   let mockCommandRunner: MockCommandRunner;
-  let displayItemInfoTreeStub: any;
 
   beforeEach(() => {
     mockFs = new MockFileSystem();
@@ -41,8 +40,7 @@ describe("showRepositoryTree", () => {
       path: "/mock_cwd",
     });
 
-    assert(displayItemInfoTreeStub.calls.length > 0);
-    const rootCall = displayItemInfoTreeStub.calls[0].args[0];
+    const rootCall = mockCommandRunner.getLastCall();
     assertEquals(rootCall.name, "mock_cwd");
     assertEquals(rootCall.type, ItemType.Directory);
     assertEquals(rootCall.children.length, 2);
