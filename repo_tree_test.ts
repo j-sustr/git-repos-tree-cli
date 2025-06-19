@@ -5,9 +5,7 @@ import { stub } from "jsr:@std/testing/mock";
 import * as formatModule from "./format.ts";
 import * as gitModule from "./git.ts";
 import { MockFileSystem } from "./mocks/file_system_mock.ts";
-import { showRepositoryTree } from "./repo_tree.ts";
 import { ItemType } from "./types.ts";
-import { FileSystem } from "./file_system.ts";
 
 let mockTestGitRepositoryResult: boolean;
 let mockGetGitStatusResult: gitModule.GitStatus;
@@ -50,18 +48,6 @@ describe("showRepositoryTree", () => {
       hasWorkingChanges: false,
     };
 
-    stub(
-      gitModule,
-      "testGitRepository",
-      async (_path: string, _fileSystem: FileSystem) =>
-        mockTestGitRepositoryResult,
-    );
-    stub(
-      gitModule,
-      "getGitStatus",
-      async (_path: string, _fileSystem: FileSystem) => mockGetGitStatusResult,
-    );
-
     displayItemInfoTreeStub = stub(
       formatModule,
       "displayItemInfoTree",
@@ -72,10 +58,6 @@ describe("showRepositoryTree", () => {
 
   afterEach(() => {
     restoreConsoleOutput();
-    displayItemInfoTreeStub.restore();
-    (gitModule.testGitRepository as unknown as { restore: () => void })
-      .restore();
-    (gitModule.getGitStatus as unknown as { restore: () => void }).restore();
   });
 
   it("displays a simple directory structure", async () => {

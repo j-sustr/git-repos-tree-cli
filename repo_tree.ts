@@ -2,9 +2,9 @@ import { join, resolve } from "https://deno.land/std@0.224.0/path/mod.ts";
 import { type WalkEntry } from "https://deno.land/std@0.224.0/fs/walk.ts";
 import { DenoFileSystem, FileSystem } from "./file_system.ts";
 import { ItemInfo, ItemType } from "./types.ts";
-import { getGitStatus, testGitRepository } from "./git.ts";
 import { displayItemInfoTree } from "./format.ts";
 import { Logger } from "https://deno.land/std@0.224.0/log/mod.ts";
+import { GitService } from "./git.ts";
 
 export interface RepositoryTreeOptions {
   path?: string;
@@ -14,12 +14,11 @@ export interface RepositoryTreeOptions {
 }
 
 export class RepositoryTree {
-  private fileSystem: FileSystem;
-  private warn: Logger;
-
-  constructor(logger: Logger, fileSystem: FileSystem = new DenoFileSystem()) {
-    this.warn = logger;
-    this.fileSystem = fileSystem;
+  constructor(
+    private readonly _logger: Logger,
+    private readonly _fileSystem: FileSystem,
+    private readonly _git: GitService
+  ) {
   }
 
   private async getItemType(
@@ -27,7 +26,7 @@ export class RepositoryTree {
     isDirectory: boolean,
   ): Promise<ItemType> {
     if (isDirectory) {
-      const isGitRepo = await testGitRepository(path, this.fileSystem);
+      const isGitRepo = await this._git.testGitRepository(path, this._fileSystem);
       if (isGitRepo) {
         return ItemType.RepoDirectory;
       }
@@ -52,7 +51,7 @@ export class RepositoryTree {
     itemInfo.allPathsLeadToRepo = itemInfo.type === ItemType.RepoDirectory;
 
     if (itemInfo.type === ItemType.RepoDirectory) {
-      itemInfo.gitStatus = await getGitStatus(entry.path, this.fileSystem);
+      itemInfo.gitStatus = await this._git.getGitStatus(entry.path);
     }
 
     const isDirectory = itemInfo.type === ItemType.Directory ||
