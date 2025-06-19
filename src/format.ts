@@ -25,8 +25,7 @@ function formatRepoLevelItem(item: ItemInfo): [string, string] {
  */
 function formatRepoItem(item: ItemInfo): [string, string] {
   const gitStatus = item.gitStatus;
-  const isSynced = gitStatus?.aheadBy === 0;
-  const isDirty = gitStatus?.hasWorkingChanges || !isSynced;
+  const isDirty = (gitStatus?.hasWorkingChanges || gitStatus?.hasUnpushedChanges) ?? false;
 
   if (isDirty) {
     return [item.name, "color: red;"];
