@@ -5,17 +5,13 @@ import { GitService } from "../src/git.ts";
 import { DenoFileSystem } from "../src/file_system.ts";
 import { DenoCommandRunner } from "../src/command_runner.ts";
 
-
-const TEST_DIR = "./temp_test_repo_tree";
-const log = console
+const TEST_DIR = "./test/temp/repo_tree";
+const log = console;
 
 const fileSystem = new DenoFileSystem();
 const commandRunner = new DenoCommandRunner();
-const gitService = new GitService(fileSystem, );
+const gitService = new GitService(fileSystem, commandRunner);
 
-/**
- * Creates the test repository structure.
- */
 async function setupTestRepo() {
   log.info(`Setting up test repository in ${TEST_DIR}...`);
 
@@ -38,7 +34,10 @@ async function setupTestRepo() {
   await gitService.commit(rootRepoPath, "Initial commit");
 
   // 2. Add committed files
-  await Deno.writeTextFile(join(rootRepoPath, "file1.txt"), "Content of file1.");
+  await Deno.writeTextFile(
+    join(rootRepoPath, "file1.txt"),
+    "Content of file1.",
+  );
   await Deno.writeTextFile(
     join(rootRepoPath, "changed_file.txt"),
     "Original content.",
@@ -89,3 +88,5 @@ async function setupTestRepo() {
 
   log.info("Test repository setup complete.");
 }
+
+setupTestRepo();
