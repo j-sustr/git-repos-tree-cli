@@ -4,10 +4,6 @@ import { join } from "jsr:@std/path";
 import { Logger } from "./logger.ts";
 
 export interface GitStatus {
-  hasUncommittedChanges: boolean;
-  hasUntrackedFiles: boolean;
-
-  // instead
   hasWorkingChanges: boolean;
   hasUnpushedChanges?: boolean;
 }
@@ -35,33 +31,50 @@ export class GitService {
 
   async getGitStatus(repoPath: string): Promise<GitStatus> {
     try {
-      const output = await this._commandRunner.runCommand([
+      const statusOutput = await this._commandRunner.runCommand([
         "git",
         "status",
-        "--porcelain=v1", // Use v1 for stable output
-        "--untracked-files=all", // Include untracked files
+        "--porcelain=v1",
+        "--untracked-files=all",
       ], {
         cwd: repoPath,
       });
 
-      if (output.stderr.length > 0) {
+      if (statusOutput.stderr.length > 0) {
         this._log.warn(
-          `Git status stderr for ${repoPath}: ${output.stderr}`,
+          `Git status stderr for ${repoPath}: ${statusOutput.stderr}`,
         );
       }
 
-      const lines = output.stdout.split("\n").filter(Boolean); // Filter out empty lines
+      const lines = statusOutput.stdout.split("\n").filter(Boolean);
+      const hasWorkingChanges = lines.length > 0;
 
-      // Lines like " M file.txt", "A file.txt", "D file.txt", etc. are uncommitted changes
-      // Lines like "?? file.txt" are untracked files
-      const hasUncommittedChanges = lines.some((line) =>
-        !line.startsWith("??")
-      );
-      const hasUntrackedFiles = lines.some((line) => line.startsWith("??"));
+      let hasUnpushedChanges: boolean | undefined = undefined;
+
+      // Check for unpushed changes only if there are no working changes.
+      // If there are working changes, the push command wouldn't reflect local-only commits.
+      if (!hasWorkingChanges) {
+        const revListOutput = await this._commandRunner.runCommand([
+          "git",
+          "rev-list",
+          "@{upstream}..HEAD",
+        ], {
+          cwd: repoPath,
+        });
+
+        if (revListOutput.stderr.length > 0 && !revListOutput.stderr.includes("unknown revision or path not in the working tree")) {
+            this._log.warn(
+                `Git rev-list stderr for ${repoPath}: ${revListOutput.stderr}`,
+            );
+        }
+
+        hasUnpushedChanges = revListOutput.stdout.trim().length > 0;
+      }
+
 
       return {
-        hasUncommittedChanges,
-        hasUntrackedFiles,
+        hasWorkingChanges,
+        hasUnpushedChanges,
       };
     } catch (error) {
       if (Error.isError(error)) {
@@ -69,8 +82,8 @@ export class GitService {
           `Error getting git status for ${repoPath}: ${error.message}`,
         );
         return {
-          hasUncommittedChanges: false,
-          hasUntrackedFiles: false,
+          hasWorkingChanges: false,
+          hasUnpushedChanges: false,
         };
       }
 
@@ -80,7 +93,6 @@ export class GitService {
     }
   }
 
-  // Utility to run git commands
   private async _runGitCommand(
     repoPath: string,
     args: string[],
