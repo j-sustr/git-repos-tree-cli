@@ -1,12 +1,17 @@
-import { join, resolve } from "https://deno.land/std@0.224.0/path/mod.ts";
 import { exists } from "https://deno.land/std@0.224.0/fs/exists.ts";
-import { ensureDir, emptyDir } from "https://deno.land/std@0.224.0/fs/mod.ts";
-import { type WalkEntry } from "https://deno.land/std@0.224.0/fs/walk.ts";
+import { emptyDir, ensureDir } from "https://deno.land/std@0.224.0/fs/mod.ts";
+import { join, resolve } from "https://deno.land/std@0.224.0/path/mod.ts";
+import { GitService } from "../src/git.ts";
+import { DenoFileSystem } from "../src/file_system.ts";
+import { DenoCommandRunner } from "../src/command_runner.ts";
 
 
 const TEST_DIR = "./temp_test_repo_tree";
 const log = console
-const gitService = new GitService(log);
+
+const fileSystem = new DenoFileSystem();
+const commandRunner = new DenoCommandRunner();
+const gitService = new GitService(fileSystem, );
 
 /**
  * Creates the test repository structure.
