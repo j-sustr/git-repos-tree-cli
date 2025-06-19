@@ -1,16 +1,17 @@
-import { afterEach, beforeEach, describe, it } from "jsr:@std/testing/bdd";
 import { assert, assertEquals, assertStringIncludes } from "jsr:@std/assert";
-import { MethodSpy, returnsNext, spy, stub } from "jsr:@std/testing/mock";
+import { afterEach, beforeEach, describe, it, test } from "jsr:@std/testing/bdd";
+import { stub } from "jsr:@std/testing/mock";
 
-import * as gitModule from "./git.ts";
 import * as formatModule from "./format.ts";
-import { FileSystem } from "./file_system.ts";
+import * as gitModule from "./git.ts";
 import { MockFileSystem } from "./mocks/file_system_mock.ts";
 import { showRepositoryTree } from "./repo_tree.ts";
 import { ItemType } from "./types.ts";
+import { FileSystem } from "./file_system.ts";
 
 let mockTestGitRepositoryResult: boolean;
 let mockGetGitStatusResult: gitModule.GitStatus;
+
 
 let consoleOutput: string[] = [];
 let consoleErrorOutput: string[] = [];
@@ -45,8 +46,6 @@ const restoreConsoleOutput = () => {
 describe("showRepositoryTree", () => {
   let mockFs: MockFileSystem;
   let displayItemInfoTreeStub: any;
-  let testGitRepositorySpy: any;
-  let getGitStatusSpy: any;
 
   beforeEach(() => {
     mockFs = new MockFileSystem();
@@ -62,18 +61,25 @@ describe("showRepositoryTree", () => {
       hasWorkingChanges: false,
     };
 
-    testGitRepositorySpy = spy(
+    stub(
+      gitModule,
+      "testGitRepository",
       async (_path: string, _fileSystem: FileSystem) =>
         mockTestGitRepositoryResult,
     );
-    getGitStatusSpy = spy(
+    stub(
+      gitModule,
+      "getGitStatus",
       async (_path: string, _fileSystem: FileSystem) => mockGetGitStatusResult,
     );
 
+    stub({
+      testGitRepository: gitModule.testGitRepository,
+    }, )
+
     displayItemInfoTreeStub = stub(
-      { parse: formatModule.displayItemInfoTree },
-      "parse",
-      returnsNext(),
+      { displayItemInfoTree: formatModule.displayItemInfoTree },
+      "displayItemInfoTree",
     );
 
     captureConsoleOutput();
