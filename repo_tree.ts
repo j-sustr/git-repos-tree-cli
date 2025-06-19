@@ -8,7 +8,7 @@ import { ItemInfo, ItemType } from "./types.ts";
 
 export interface RepositoryTreeOptions {
   path?: string;
-  skipDirectories?: string[];
+  skipDirectories?: Set<string>;
   depth?: number;
   includeHidden?: boolean;
 }
@@ -110,7 +110,7 @@ export class RepositoryTree {
     const effectiveOptions: Required<RepositoryTreeOptions> = {
       path: options.path || this._fileSystem.cwd(),
       skipDirectories: new Set(
-        options.skipDirectories || ["node_modules", "build", ".gradle"],
+        options.skipDirectories ?? ["node_modules", "build", ".gradle"],
       ),
       depth: options.depth ?? 10,
       includeHidden: options.includeHidden ?? false,
