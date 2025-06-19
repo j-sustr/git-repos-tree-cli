@@ -35,72 +35,89 @@ export class GitService {
     }
   }
 
-  async getGitStatus(path: string): Promise<GitStatus> {
-    const originalCwd = this.fileSystem.cwd();
+  async getGitStatus(repoPath: string): Promise<GitStatus> {
     try {
-      this.fileSystem.chdir(path);
+      const command = new Deno.Command("git", {
+        args: ["status", "--porcelain=v1"], // Use v1 for stable output
+        cwd: repoPath,
+      });
+      const { stdout, stderr } = await command.output();
 
-      const statusOutput = await this.commandRunner.runCommand([ // Use the injected commandRunner
-        "git",
-        "status",
-        "--porcelain",
-      ]);
-      const hasWorkingChanges =
-        new TextDecoder().decode(statusOutput.stdout).trim().length > 0;
-
-      const branchOutput = await this.commandRunner.runCommand([ // Use the injected commandRunner
-        "git",
-        "rev-parse",
-        "--abbrev-ref",
-        "HEAD",
-      ]);
-      const currentBranch = new TextDecoder().decode(branchOutput.stdout).trim();
-
-      const remoteOutput = await this.commandRunner.runCommand([ // Use the injected commandRunner
-        "git",
-        "config",
-        `branch.${currentBranch}.remote`,
-      ]);
-      const remoteName = new TextDecoder().decode(remoteOutput.stdout).trim();
-
-      let aheadBy = 0;
-      if (remoteName) {
-        const remoteBranchOutput = await this.commandRunner.runCommand([ // Use the injected commandRunner
-          "git",
-          "rev-list",
-          "--left-right",
-          `${remoteName}/${currentBranch}...${currentBranch}`,
-        ]);
-        const remoteBranchOutputStr = new TextDecoder().decode(
-          remoteBranchOutput.stdout,
-        ).trim();
-        aheadBy = remoteBranchOutputStr.split("\n").filter((line) =>
-          line.startsWith(">")
-        ).length;
+      if (stderr.length > 0) {
+        this._logger.warn(
+          `Git status stderr for ${repoPath}: ${
+            new TextDecoder().decode(stderr)
+          }`,
+        );
       }
 
+      const output = new TextDecoder().decode(stdout);
+      const lines = output.split("\n").filter(Boolean); // Filter out empty lines
+
+      // Lines like " M file.txt", "A file.txt", "D file.txt", etc. are uncommitted changes
+      // Lines like "?? file.txt" are untracked files
+      const hasUncommittedChanges = lines.some((line) =>
+        !line.startsWith("??")
+      );
+      const hasUntrackedFiles = lines.some((line) => line.startsWith("??"));
+
       return {
-        aheadBy,
-        hasWorkingChanges,
-        modified: [],
-        untracked: [],
-        ahead: 0,
-        behind: 0,
-        files: [],
+        hasUncommittedChanges,
+        hasUntrackedFiles,
       };
     } catch (error) {
-      console.error(`Error getting Git status for ${path}:`, error);
+      this._logger.error(
+        `Error getting git status for ${repoPath}: ${error.message}`,
+      );
       return {
-        aheadBy: 0,
-        hasWorkingChanges: false,
-        modified: [],
-        untracked: [],
-        ahead: 0,
-        behind: 0,
-        files: [],
+        hasUncommittedChanges: false,
+        hasUntrackedFiles: false,
       };
-    } finally {
-      this.fileSystem.chdir(originalCwd);
+    }
+  }
+
+  // Utility to run git commands
+  private async _runGitCommand(
+    repoPath: string,
+    args: string[],
+  ): Promise<{ code: number; stdout: string; stderr: string }> {
+    const command = new Deno.Command("git", {
+      args: args,
+      cwd: repoPath,
+    });
+    const { code, stdout, stderr } = await command.output();
+    return {
+      code,
+      stdout: new TextDecoder().decode(stdout),
+      stderr: new TextDecoder().decode(stderr),
+    };
+  }
+
+  async init(repoPath: string): Promise<void> {
+    const { code, stderr } = await this._runGitCommand(repoPath, ["init"]);
+    if (code !== 0) {
+      throw new Error(`Git init failed: ${stderr}`);
+    }
+  }
+
+  async add(repoPath: string, files: string[]): Promise<void> {
+    const { code, stderr } = await this._runGitCommand(repoPath, [
+      "add",
+      ...files,
+    ]);
+    if (code !== 0) {
+      throw new Error(`Git add failed: ${stderr}`);
+    }
+  }
+
+  async commit(repoPath: string, message: string): Promise<void> {
+    const { code, stderr } = await this._runGitCommand(repoPath, [
+      "commit",
+      "-m",
+      message,
+    ]);
+    if (code !== 0) {
+      throw new Error(`Git commit failed: ${stderr}`);
     }
   }
 }
