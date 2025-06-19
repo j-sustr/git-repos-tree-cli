@@ -1,6 +1,6 @@
 {
   "tasks": {
-    "dev": "deno run --watch cli.ts"
+    "show-tree": "deno run -RE --allow-run=git src/cli.ts"
   },
   "imports": {
     "@logtape/logtape": "jsr:@logtape/logtape@^0.12.1",
