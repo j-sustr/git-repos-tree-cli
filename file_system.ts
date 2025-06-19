@@ -1,6 +1,6 @@
 export interface FileSystem {
   stat(path: string): Promise<Deno.FileInfo>;
-  readDir(path: string): AsyncIterableIterator<Deno.DirEntry>;
+  readDir(path: string): AsyncIterable<Deno.DirEntry>;
   cwd(): string;
   chdir(directory: string): void;
   runCommand(cmd: string[]): Promise<Deno.CommandOutput>;
@@ -12,7 +12,7 @@ export class DenoFileSystem implements FileSystem {
     return await Deno.stat(path);
   }
 
-  readDir(path: string): AsyncIterableIterator<Deno.DirEntry> {
+  readDir(path: string): AsyncIterable<Deno.DirEntry> {
     return Deno.readDir(path);
   }
 
