@@ -3,6 +3,7 @@
     "dev": "deno run --watch cli.ts"
   },
   "imports": {
+    "@logtape/logtape": "jsr:@logtape/logtape@^0.12.1",
     "@std/assert": "jsr:@std/assert@1",
     "@std/cli": "jsr:@std/cli@^1.0.20"
   }
