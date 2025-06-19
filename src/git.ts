@@ -4,13 +4,6 @@ import { join } from "jsr:@std/path";
 import { Logger } from "./logger.ts";
 
 export interface GitStatus {
-  // aheadBy: number;
-  // hasWorkingChanges: boolean;
-  // modified?: string[];
-  // untracked: string[];
-  // ahead: number;
-  // behind: number;
-  // files: string[];
   hasUncommittedChanges: boolean;
   hasUntrackedFiles: boolean;
 }
@@ -49,14 +42,11 @@ export class GitService {
 
       if (output.stderr.length > 0) {
         this._log.warn(
-          `Git status stderr for ${repoPath}: ${
-            new TextDecoder().decode(output.stderr)
-          }`,
+          `Git status stderr for ${repoPath}: ${output.stderr}`,
         );
       }
 
-      const decodedOutput = new TextDecoder().decode(output.stdout);
-      const lines = decodedOutput.split("\n").filter(Boolean); // Filter out empty lines
+      const lines = output.stdout.split("\n").filter(Boolean); // Filter out empty lines
 
       // Lines like " M file.txt", "A file.txt", "D file.txt", etc. are uncommitted changes
       // Lines like "?? file.txt" are untracked files
@@ -79,7 +69,7 @@ export class GitService {
           hasUntrackedFiles: false,
         };
       }
-      
+
       throw new Error(
         `Unexpected error getting git status for ${repoPath}: ${error}`,
       );
@@ -91,16 +81,14 @@ export class GitService {
     repoPath: string,
     args: string[],
   ): Promise<{ code: number; stdout: string; stderr: string }> {
-    const command = new Deno.Command("git", {
-      args: args,
+    const output = await this._commandRunner.runCommand([
+      "git",
+      ...args,
+    ], {
       cwd: repoPath,
     });
-    const { code, stdout, stderr } = await command.output();
-    return {
-      code,
-      stdout: new TextDecoder().decode(stdout),
-      stderr: new TextDecoder().decode(stderr),
-    };
+
+    return output;
   }
 
   async init(repoPath: string): Promise<void> {

@@ -1,6 +1,6 @@
 export interface CommandResult {
-  stdout: Uint8Array;
-  stderr: Uint8Array;
+  stdout: string;
+  stderr: string;
   success: boolean;
   code: number;
 }
@@ -23,11 +23,14 @@ export class DenoCommandRunner implements CommandRunner {
       cwd: opts.cwd,
       env: opts.env,
     });
+    
     const { stdout, stderr, code } = await command.output();
 
+    const decoder = new TextDecoder();
+
     return {
-      stdout,
-      stderr,
+      stdout: decoder.decode(stdout),
+      stderr: decoder.decode(stderr),
       success: code === 0,
       code,
     };
