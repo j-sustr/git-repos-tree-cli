@@ -1,15 +1,22 @@
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  it,
+} from "jsr:@std/testing/bdd";
+import { assert, assertEquals, assertStringIncludes } from "jsr:@std/assert";
+import { spy } from "jsr:@std/testing/mock";
+
 import * as gitModule from "./git.ts";
 import * as formatModule from "./format.ts";
 import { FileSystem } from "./file_system.ts";
 import { MockFileSystem } from "./mocks/file_system_mock.ts";
 import { showRepositoryTree } from "./repo_tree.ts";
 import { ItemType } from "./types.ts";
-import { assertEquals } from "jsr:@std/assert";
 
 let mockTestGitRepositoryResult: boolean;
 let mockGetGitStatusResult: gitModule.GitStatus;
 
-// Helper to capture console output
 let consoleOutput: string[] = [];
 let consoleErrorOutput: string[] = [];
 let originalConsoleLog: typeof console.log;
@@ -40,11 +47,11 @@ const restoreConsoleOutput = () => {
   console.error = originalConsoleError;
 };
 
-Deno.test("showRepositoryTree", async (t) => {
+describe("showRepositoryTree", () => {
   let mockFs: MockFileSystem;
   let displayItemInfoTreeSpy: typeof formatModule.displayItemInfoTree;
 
-  t.beforeEach(() => {
+  beforeEach(() => {
     mockFs = new MockFileSystem();
     mockFs.reset();
     mockTestGitRepositoryResult = false;
@@ -54,12 +61,10 @@ Deno.test("showRepositoryTree", async (t) => {
       ahead: 0,
       behind: 0,
       files: [],
+      aheadBy: 0,
+      hasWorkingChanges: false,
     };
 
-    // Mock the imported git functions
-    // Using Deno.Spy to wrap the actual functions, allowing us to control their return values
-    // without directly modifying the imported module's exports in a non-testable way.
-    // In a more complex scenario, consider explicit dependency injection.
     gitModule.testGitRepository = spy(
       async (_path: string, _fileSystem: FileSystem) =>
         mockTestGitRepositoryResult,
@@ -68,20 +73,19 @@ Deno.test("showRepositoryTree", async (t) => {
       async (_path: string, _fileSystem: FileSystem) => mockGetGitStatusResult,
     );
 
-    // Spy on displayItemInfoTree
     displayItemInfoTreeSpy = spy(formatModule, "displayItemInfoTree");
 
     captureConsoleOutput();
   });
 
-  t.afterEach(() => {
+  afterEach(() => {
     restoreConsoleOutput();
     displayItemInfoTreeSpy.restore();
     (gitModule.testGitRepository as unknown as { restore: () => void }).restore();
     (gitModule.getGitStatus as unknown as { restore: () => void }).restore();
   });
 
-  await t.step("display a simple directory structure", async () => {
+  it("displays a simple directory structure", async () => {
     mockFs.addDirectory("/mock_cwd", "mock_cwd");
     mockFs.addDirectory("/mock_cwd/dir1", "dir1");
     mockFs.addFile("/mock_cwd/dir1/file1.txt", "file1.txt");
@@ -99,7 +103,7 @@ Deno.test("showRepositoryTree", async (t) => {
     assertEquals(rootCall.children[1].name, "dir2");
   });
 
-  await t.step("skip specified directories", async () => {
+  it("skips specified directories", async () => {
     mockFs.addDirectory("/mock_cwd", "mock_cwd");
     mockFs.addDirectory("/mock_cwd/dir_to_skip", "dir_to_skip");
     mockFs.addFile("/mock_cwd/dir_to_skip/hidden_file.txt", "hidden_file.txt");
@@ -115,7 +119,7 @@ Deno.test("showRepositoryTree", async (t) => {
     assertEquals(rootCall.children[0].name, "dir_not_skipped");
   });
 
-  await t.step("respect the depth limit", async () => {
+  it("respects the depth limit", async () => {
     mockFs.addDirectory("/mock_cwd", "mock_cwd");
     mockFs.addDirectory("/mock_cwd/level1", "level1");
     mockFs.addDirectory("/mock_cwd/level1/level2", "level2");
@@ -129,7 +133,7 @@ Deno.test("showRepositoryTree", async (t) => {
     assertEquals(rootCall.children[0].children.length, 0);
   });
 
-  await t.step("include hidden files when includeHidden is true", async () => {
+  it("includes hidden files when includeHidden is true", async () => {
     mockFs.addDirectory("/mock_cwd", "mock_cwd");
     mockFs.addFile("/mock_cwd/.hidden_file", ".hidden_file");
     mockFs.addDirectory("/mock_cwd/.hidden_dir", ".hidden_dir");
@@ -144,7 +148,7 @@ Deno.test("showRepositoryTree", async (t) => {
     assert(rootCall.children.some((c: { name: string }) => c.name === "visible_file"));
   });
 
-  await t.step("not include hidden files by default", async () => {
+  it("does not include hidden files by default", async () => {
     mockFs.addDirectory("/mock_cwd", "mock_cwd");
     mockFs.addFile("/mock_cwd/.hidden_file", ".hidden_file");
     mockFs.addDirectory("/mock_cwd/.hidden_dir", ".hidden_dir");
@@ -157,7 +161,7 @@ Deno.test("showRepositoryTree", async (t) => {
     assertEquals(rootCall.children[0].name, "visible_file");
   });
 
-  await t.step("handle permission denied errors gracefully", async () => {
+  it("handles permission denied errors gracefully", async () => {
     mockFs.addDirectory("/mock_cwd", "mock_cwd");
     mockFs.addDirectory("/mock_cwd/restricted_dir", "restricted_dir");
     mockFs.setPermissionDenied("/mock_cwd/restricted_dir");
@@ -170,7 +174,7 @@ Deno.test("showRepositoryTree", async (t) => {
     );
   });
 
-  await t.step("handle path not found errors", async () => {
+  it("handles path not found errors", async () => {
     mockFs.setNotFound("/non_existent_path");
 
     await showRepositoryTree({ fileSystem: mockFs, path: "/non_existent_path" });
@@ -181,7 +185,7 @@ Deno.test("showRepositoryTree", async (t) => {
     );
   });
 
-  await t.step("correctly identify a git repository", async () => {
+  it("correctly identifies a git repository", async () => {
     mockFs.addDirectory("/mock_cwd", "mock_cwd");
     mockFs.addDirectory("/mock_cwd/my_repo", "my_repo");
     mockFs.addFile("/mock_cwd/my_repo/file.txt", "file.txt");
@@ -193,6 +197,8 @@ Deno.test("showRepositoryTree", async (t) => {
       ahead: 0,
       behind: 0,
       files: [],
+      aheadBy: 0,
+      hasWorkingChanges: false,
     };
 
     await showRepositoryTree({ fileSystem: mockFs });
@@ -207,7 +213,7 @@ Deno.test("showRepositoryTree", async (t) => {
     assertEquals(repoItem.gitStatus.modified[0], "file.txt");
   });
 
-  await t.step("display a single file", async () => {
+  it("displays a single file", async () => {
     mockFs.addFile("/mock_cwd/my_file.txt", "my_file.txt");
 
     await showRepositoryTree({ fileSystem: mockFs, path: "/mock_cwd/my_file.txt" });
@@ -218,7 +224,7 @@ Deno.test("showRepositoryTree", async (t) => {
     assertEquals(rootCall.children.length, 0);
   });
 
-  await t.step("set allPathsLeadToRepo and containsRepo correctly", async () => {
+  it("sets allPathsLeadToRepo and containsRepo correctly", async () => {
     mockFs.addDirectory("/mock_cwd", "mock_cwd");
     mockFs.addDirectory("/mock_cwd/parent_dir", "parent_dir");
     mockFs.addDirectory("/mock_cwd/parent_dir/git_repo", "git_repo");
@@ -234,7 +240,7 @@ Deno.test("showRepositoryTree", async (t) => {
       (c: { name: string }) => c.name === "parent_dir",
     );
     assert(parentDir !== undefined);
-    assertFalse(parentDir.allPathsLeadToRepo);
+    assert(!parentDir.allPathsLeadToRepo);
     assert(parentDir.containsRepo);
 
     const gitRepo = parentDir.children.find(
@@ -242,13 +248,13 @@ Deno.test("showRepositoryTree", async (t) => {
     );
     assert(gitRepo !== undefined);
     assert(gitRepo.allPathsLeadToRepo);
-    assertFalse(gitRepo.containsRepo);
+    assert(!gitRepo.containsRepo);
 
     const regularDir = parentDir.children.find(
       (c: { name: string }) => c.name === "regular_dir",
     );
     assert(regularDir !== undefined);
-    assertFalse(regularDir.allPathsLeadToRepo);
-    assertFalse(regularDir.containsRepo);
+    assert(!regularDir.allPathsLeadToRepo);
+    assert(!regularDir.containsRepo);
   });
 });
