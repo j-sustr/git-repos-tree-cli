@@ -1,12 +1,12 @@
 import { assert, assertEquals } from "jsr:@std/assert";
-import { afterEach, beforeEach, describe, it } from "jsr:@std/testing/bdd";
+import { beforeEach, describe, it } from "jsr:@std/testing/bdd";
 
-import { MockFileSystem } from "./mocks/file_system_mock.ts";
-import { ItemType } from "./types.ts";
-import { RepositoryTree } from "./repo_tree.ts";
 import { getLogger } from "@std/log";
 import { GitService } from "./git.ts";
+import { MockFileSystem } from "./mocks/file_system_mock.ts";
 import { MockCommandRunner } from "./mocks/mock_command_runner.ts";
+import { RepositoryTree } from "./repo_tree.ts";
+import { ItemType } from "./types.ts";
 
 
 describe("showRepositoryTree", () => {
