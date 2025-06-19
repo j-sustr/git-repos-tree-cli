@@ -4,7 +4,7 @@ import { FileSystem } from "./file_system.ts";
 import { displayItemInfoTree } from "./format.ts";
 import { GitService } from "./git.ts";
 import { ItemInfo, ItemType } from "./types.ts";
-import { Logger } from "@std/log/get-logger";
+import { Logger } from "./logger.ts";
 
 export interface RepositoryTreeOptions {
   path?: string;
@@ -15,7 +15,7 @@ export interface RepositoryTreeOptions {
 
 export class RepositoryTree {
   constructor(
-    private readonly _logger: Logger,
+    private readonly _log: Logger,
     private readonly _fileSystem: FileSystem,
     private readonly _git: GitService
   ) {
@@ -94,11 +94,11 @@ export class RepositoryTree {
         }
       } catch (error) {
         if (error instanceof Deno.errors.PermissionDenied) {
-          this._logger.warn(
+          this._log.warn(
             `Permission denied: Could not read directory ${entry.path}`,
           );
         } else {
-          this._logger.error(`Error reading directory ${entry.path}: ${error}`);
+          this._log.error(`Error reading directory ${entry.path}: ${error}`);
         }
       }
     }
@@ -140,16 +140,16 @@ export class RepositoryTree {
           isSymlink: false,
         };
       } else {
-        this._logger.error(
+        this._log.error(
           `Error: Path '${resolvedPath}' is neither a file nor a directory.`,
         );
         return;
       }
     } catch (error) {
       if (error instanceof Deno.errors.NotFound) {
-        this._logger.error(`Error: Path '${resolvedPath}' not found.`);
+        this._log.error(`Error: Path '${resolvedPath}' not found.`);
       } else {
-        this._logger.error(`Error accessing path '${resolvedPath}': ${error}`);
+        this._log.error(`Error accessing path '${resolvedPath}': ${error}`);
       }
       return;
     }

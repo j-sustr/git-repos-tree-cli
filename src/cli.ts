@@ -1,6 +1,8 @@
 import { parseArgs } from "@std/cli/parse-args";
-import { showRepositoryTree } from "../src/repo_tree.ts";
-
+import { RepositoryTree } from "./repo_tree.ts";
+import { GitService } from "./git.ts";
+import { DenoCommandRunner } from "./command_runner.ts";
+import { DenoFileSystem } from "./file_system.ts";
 
 const args = parseArgs(Deno.args, {
   string: ["path", "skip", "depth"],
@@ -25,9 +27,19 @@ const skipDirectories = (args.skip as string)
   .map((s) => s.trim())
   .filter(Boolean);
 
-await showRepositoryTree({
+const fileSystem = new DenoFileSystem();
+const commandRunner = new DenoCommandRunner();
+const gitService = new GitService(fileSystem, commandRunner);
+
+const repoTree = new RepositoryTree(
+  console,
+  fileSystem,
+  gitService,
+);
+
+await repoTree.show({
   path: args.path as string,
   depth: args.depth as number,
-  skipDirectories: skipDirectories,
+  skipDirectories,
   includeHidden: args["include-hidden"] as boolean,
 });
