@@ -26,7 +26,7 @@ export class RepositoryTree {
     isDirectory: boolean,
   ): Promise<ItemType> {
     if (isDirectory) {
-      const isGitRepo = await this._git.testGitRepository(path, this._fileSystem);
+      const isGitRepo = await this._git.testGitRepository(path);
       if (isGitRepo) {
         return ItemType.RepoDirectory;
       }
@@ -65,7 +65,7 @@ export class RepositoryTree {
       }
 
       try {
-        for await (const childEntry of this.fileSystem.readDir(entry.path)) {
+        for await (const childEntry of this._fileSystem.readDir(entry.path)) {
           if (!options.includeHidden && childEntry.name.startsWith(".")) {
             continue;
           }
@@ -94,11 +94,11 @@ export class RepositoryTree {
         }
       } catch (error) {
         if (error instanceof Deno.errors.PermissionDenied) {
-          this.warn.warn(
+          this._logger.warn(
             `Permission denied: Could not read directory ${entry.path}`,
           );
         } else {
-          this.warn.error(`Error reading directory ${entry.path}: ${error}`);
+          this._logger.error(`Error reading directory ${entry.path}: ${error}`);
         }
       }
     }
@@ -108,7 +108,7 @@ export class RepositoryTree {
 
   public async show(options: RepositoryTreeOptions = {}): Promise<void> {
     const effectiveOptions: Required<RepositoryTreeOptions> = {
-      path: options.path || this.fileSystem.cwd(),
+      path: options.path || this._fileSystem.cwd(),
       skipDirectories: new Set(
         options.skipDirectories || ["node_modules", "build", ".gradle"],
       ),
@@ -120,7 +120,7 @@ export class RepositoryTree {
 
     let rootEntry: WalkEntry;
     try {
-      const stat = await this.fileSystem.stat(resolvedPath);
+      const stat = await this._fileSystem.stat(resolvedPath);
       if (stat.isDirectory) {
         rootEntry = {
           path: resolvedPath,
@@ -140,16 +140,16 @@ export class RepositoryTree {
           isSymlink: false,
         };
       } else {
-        this.warn.error(
+        this._logger.error(
           `Error: Path '${resolvedPath}' is neither a file nor a directory.`,
         );
         return;
       }
     } catch (error) {
       if (error instanceof Deno.errors.NotFound) {
-        this.warn.error(`Error: Path '${resolvedPath}' not found.`);
+        this._logger.error(`Error: Path '${resolvedPath}' not found.`);
       } else {
-        this.warn.error(`Error accessing path '${resolvedPath}': ${error}`);
+        this._logger.error(`Error accessing path '${resolvedPath}': ${error}`);
       }
       return;
     }
