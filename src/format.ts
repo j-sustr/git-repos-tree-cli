@@ -25,7 +25,8 @@ function formatRepoLevelItem(item: ItemInfo): [string, string] {
  */
 function formatRepoItem(item: ItemInfo): [string, string] {
   const gitStatus = item.gitStatus;
-  const isDirty = (gitStatus?.hasWorkingChanges || gitStatus?.hasUnpushedChanges) ?? false;
+  const isDirty =
+    (gitStatus?.hasWorkingChanges || gitStatus?.hasUnpushedChanges) ?? false;
 
   if (isDirty) {
     return [item.name, "color: red;"];
@@ -54,27 +55,31 @@ function formatDefaultItem(item: ItemInfo): [string, string] {
  * @param indent The current indentation level.
  * @param prefix The prefix for the current line (e.g., '├── ', '└── ').
  */
-export function displayItemInfoTree(root: ItemInfo, indent: string = '', prefix: string = ''): void {
+export function displayItemInfoTree(
+  root: ItemInfo,
+  indent: string = "",
+  prefix: string = "",
+): void {
   let formattedName: string;
   let style: string;
 
-  if (root.containsRepo) {
+  if (true) {
     [formattedName, style] = formatRepoLevelItem(root);
   } else {
     [formattedName, style] = formatDefaultItem(root);
   }
 
-  if (indent !== '') {
+  if (indent !== "") {
     console.log(`${indent}${prefix}%c${formattedName}`, style);
-  } else if (prefix === '') {
+  } else if (prefix === "") {
     console.log(`%c${formattedName}`, style);
   }
 
   if (root.children.length > 0) {
     root.children.forEach((child, index) => {
       const isLastChild = index === root.children.length - 1;
-      const newPrefix = isLastChild ? '└── ' : '├── ';
-      const newIndent = indent + (prefix === '├── ' ? '│   ' : '    ');
+      const newPrefix = isLastChild ? "└── " : "├── ";
+      const newIndent = indent + (prefix === "├── " ? "│   " : "    ");
       displayItemInfoTree(child, newIndent, newPrefix);
     });
   }
