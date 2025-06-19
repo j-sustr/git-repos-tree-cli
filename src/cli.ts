@@ -40,6 +40,6 @@ const repoTree = new RepositoryTree(
 await repoTree.show({
   path: args.path as string,
   depth: args.depth as number,
-  skipDirectories,
+  skipDirectories: new Set(skipDirectories),
   includeHidden: args["include-hidden"] as boolean,
 });
