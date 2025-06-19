@@ -2,15 +2,7 @@ import { CommandResult, CommandRunner } from "../command_runner.ts";
 
 
 export class MockCommandRunner implements CommandRunner {
-  private mockResult: CommandResult;
-
-  /**
-   * Constructs a MockCommandRunner.
-   * @param result The CommandResult to be returned by runCommand.
-   */
-  constructor(result: CommandResult) {
-    this.mockResult = result;
-  }
+  public mockResult: CommandResult;
 
   /**
    * Mocks the runCommand method to return the predefined mockResult.

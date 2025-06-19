@@ -5,42 +5,31 @@ import { MockFileSystem } from "./mocks/file_system_mock.ts";
 import { ItemType } from "./types.ts";
 import { RepositoryTree } from "./repo_tree.ts";
 import { getLogger } from "@std/log";
-import { GitService, GitStatus } from "./git.ts";
+import { GitService } from "./git.ts";
+import { MockCommandRunner } from "./mocks/mock_command_runner.ts";
 
-let mockTestGitRepositoryResult: boolean;
-let mockGetGitStatusResult: GitStatus;
 
 describe("showRepositoryTree", () => {
   let mockFs: MockFileSystem;
+  let mockCommandRunner: MockCommandRunner;
   let displayItemInfoTreeStub: any;
 
   beforeEach(() => {
     mockFs = new MockFileSystem();
+    mockCommandRunner = new MockCommandRunner();
     mockFs.reset();
-    mockTestGitRepositoryResult = false;
-    mockGetGitStatusResult = {
-      modified: [],
-      untracked: [],
-      ahead: 0,
-      behind: 0,
-      files: [],
-      aheadBy: 0,
-      hasWorkingChanges: false,
-    };
-  });
-
-  afterEach(() => {
-  
   });
 
   it("displays a simple directory structure", async () => {
+    const gitService = new GitService(
+        mockFs,
+        mockCommandRunner
+    );
+
     const repoTree = new RepositoryTree(
       getLogger("repo_tree_test"),
       mockFs,
-      new GitService(
-        getLogger("git_service_test"),
-        mockFs
-      )
+      gitService,
     );
 
     mockFs.addDirectory("/mock_cwd", "mock_cwd");
@@ -48,7 +37,9 @@ describe("showRepositoryTree", () => {
     mockFs.addFile("/mock_cwd/dir1/file1.txt", "file1.txt");
     mockFs.addDirectory("/mock_cwd/dir2", "dir2");
 
-    await repoTree.showRepositoryTree({ fileSystem: mockFs });
+    await repoTree.show({
+      path: "/mock_cwd",
+    });
 
     assert(displayItemInfoTreeStub.calls.length > 0);
     const rootCall = displayItemInfoTreeStub.calls[0].args[0];
