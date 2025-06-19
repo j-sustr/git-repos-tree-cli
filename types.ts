@@ -1,3 +1,5 @@
+import { GitStatus } from "./git.ts";
+
 // --- Enums ---
 export enum ItemType {
   File,
@@ -13,5 +15,5 @@ export interface ItemInfo {
   children: ItemInfo[];
   allPathsLeadToRepo: boolean;
   containsRepo: boolean;
-  // gitStatus?: GitStatus;
+  gitStatus?: GitStatus;
 }

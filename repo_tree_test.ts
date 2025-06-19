@@ -5,7 +5,7 @@ import {
   it,
 } from "jsr:@std/testing/bdd";
 import { assert, assertEquals, assertStringIncludes } from "jsr:@std/assert";
-import { spy } from "jsr:@std/testing/mock";
+import { MethodSpy, spy } from "jsr:@std/testing/mock";
 
 import * as gitModule from "./git.ts";
 import * as formatModule from "./format.ts";
@@ -49,7 +49,9 @@ const restoreConsoleOutput = () => {
 
 describe("showRepositoryTree", () => {
   let mockFs: MockFileSystem;
-  let displayItemInfoTreeSpy: typeof formatModule.displayItemInfoTree;
+  let displayItemInfoTreeSpy: any;
+  let testGitRepositorySpy: any;
+  let getGitStatusSpy: any;
 
   beforeEach(() => {
     mockFs = new MockFileSystem();
@@ -65,11 +67,11 @@ describe("showRepositoryTree", () => {
       hasWorkingChanges: false,
     };
 
-    gitModule.testGitRepository = spy(
+    testGitRepositorySpy = spy(
       async (_path: string, _fileSystem: FileSystem) =>
         mockTestGitRepositoryResult,
     );
-    gitModule.getGitStatus = spy(
+    getGitStatusSpy = spy(
       async (_path: string, _fileSystem: FileSystem) => mockGetGitStatusResult,
     );
 
