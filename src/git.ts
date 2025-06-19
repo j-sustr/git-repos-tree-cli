@@ -2,24 +2,26 @@
 import { CommandRunner } from "./command_runner.ts";
 import { FileSystem } from "./file_system.ts";
 import { join } from "jsr:@std/path";
+import { Logger } from "./logger.ts";
 
 export interface GitStatus {
-  aheadBy: number;
-  hasWorkingChanges: boolean;
-  modified?: string[];
-  untracked: string[];
-  ahead: number;
-  behind: number;
-  files: string[];
+  // aheadBy: number;
+  // hasWorkingChanges: boolean;
+  // modified?: string[];
+  // untracked: string[];
+  // ahead: number;
+  // behind: number;
+  // files: string[];
+  hasUncommittedChanges: boolean;
+  hasUntrackedFiles: boolean;
 }
 
 export class GitService {
-  private fileSystem: FileSystem;
-  private commandRunner: CommandRunner; // Declare the new dependency
-
-  constructor(fileSystem: FileSystem, commandRunner: CommandRunner) {
-    this.fileSystem = fileSystem;
-    this.commandRunner = commandRunner; // Assign it in the constructor
+  constructor(
+    private readonly fileSystem: FileSystem,
+    private readonly commandRunner: CommandRunner,
+    private readonly _logger: Logger = console,
+  ) {
   }
 
   async testGitRepository(path: string): Promise<boolean> {
@@ -66,13 +68,19 @@ export class GitService {
         hasUntrackedFiles,
       };
     } catch (error) {
-      this._logger.error(
-        `Error getting git status for ${repoPath}: ${error.message}`,
+      if (Error.isError(error)) {
+        this._logger.error(
+          `Error getting git status for ${repoPath}: ${error.message}`,
+        );
+        return {
+          hasUncommittedChanges: false,
+          hasUntrackedFiles: false,
+        };
+      }
+      
+      throw new Error(
+        `Unexpected error getting git status for ${repoPath}: ${error}`,
       );
-      return {
-        hasUncommittedChanges: false,
-        hasUntrackedFiles: false,
-      };
     }
   }
 

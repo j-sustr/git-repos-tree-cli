@@ -1,6 +1,5 @@
 import { GitStatus } from "./git.ts";
 
-// --- Enums ---
 export enum ItemType {
   File,
   Directory,

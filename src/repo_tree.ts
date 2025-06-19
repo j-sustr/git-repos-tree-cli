@@ -167,16 +167,3 @@ export class RepositoryTree {
     }
   }
 }
-
-// Example Usage
-// To run this, you'll need to grant file read and run permissions:
-// deno run --allow-read --allow-run --allow-write your_module.ts
-
-// import { getLogger } from "https://deno.land/std@0.224.0/log/mod.ts";
-// const logger = getLogger();
-
-// const tree = new RepositoryTree(logger);
-// await tree.show({ depth: 2, skipDirectories: ['.git', 'dist'] });
-
-// const specificPathTree = new RepositoryTree(logger);
-// await specificPathTree.show({ path: './README.md' });
