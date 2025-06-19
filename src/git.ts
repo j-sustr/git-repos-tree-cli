@@ -1,4 +1,3 @@
-// git_service.ts
 import { CommandRunner } from "./command_runner.ts";
 import { FileSystem } from "./file_system.ts";
 import { join } from "jsr:@std/path";
@@ -19,8 +18,8 @@ export interface GitStatus {
 export class GitService {
   constructor(
     private readonly fileSystem: FileSystem,
-    private readonly commandRunner: CommandRunner,
-    private readonly _logger: Logger = console,
+    private readonly _commandRunner: CommandRunner,
+    private readonly _log: Logger = console,
   ) {
   }
 
@@ -39,22 +38,25 @@ export class GitService {
 
   async getGitStatus(repoPath: string): Promise<GitStatus> {
     try {
-      const command = new Deno.Command("git", {
-        args: ["status", "--porcelain=v1"], // Use v1 for stable output
+      const output = await this._commandRunner.runCommand([
+        "git",
+        "status",
+        "--porcelain=v1", // Use v1 for stable output
+        "--untracked-files=all", // Include untracked files
+      ], {
         cwd: repoPath,
       });
-      const { stdout, stderr } = await command.output();
 
-      if (stderr.length > 0) {
-        this._logger.warn(
+      if (output.stderr.length > 0) {
+        this._log.warn(
           `Git status stderr for ${repoPath}: ${
-            new TextDecoder().decode(stderr)
+            new TextDecoder().decode(output.stderr)
           }`,
         );
       }
 
-      const output = new TextDecoder().decode(stdout);
-      const lines = output.split("\n").filter(Boolean); // Filter out empty lines
+      const decodedOutput = new TextDecoder().decode(output.stdout);
+      const lines = decodedOutput.split("\n").filter(Boolean); // Filter out empty lines
 
       // Lines like " M file.txt", "A file.txt", "D file.txt", etc. are uncommitted changes
       // Lines like "?? file.txt" are untracked files
@@ -69,7 +71,7 @@ export class GitService {
       };
     } catch (error) {
       if (Error.isError(error)) {
-        this._logger.error(
+        this._log.error(
           `Error getting git status for ${repoPath}: ${error.message}`,
         );
         return {
