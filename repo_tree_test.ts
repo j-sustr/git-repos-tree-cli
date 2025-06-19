@@ -1,11 +1,6 @@
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  it,
-} from "jsr:@std/testing/bdd";
+import { afterEach, beforeEach, describe, it } from "jsr:@std/testing/bdd";
 import { assert, assertEquals, assertStringIncludes } from "jsr:@std/assert";
-import { MethodSpy, spy } from "jsr:@std/testing/mock";
+import { MethodSpy, returnsNext, spy, stub } from "jsr:@std/testing/mock";
 
 import * as gitModule from "./git.ts";
 import * as formatModule from "./format.ts";
@@ -49,7 +44,7 @@ const restoreConsoleOutput = () => {
 
 describe("showRepositoryTree", () => {
   let mockFs: MockFileSystem;
-  let displayItemInfoTreeSpy: any;
+  let displayItemInfoTreeStub: any;
   let testGitRepositorySpy: any;
   let getGitStatusSpy: any;
 
@@ -75,15 +70,20 @@ describe("showRepositoryTree", () => {
       async (_path: string, _fileSystem: FileSystem) => mockGetGitStatusResult,
     );
 
-    displayItemInfoTreeSpy = spy(formatModule, "displayItemInfoTree");
+    displayItemInfoTreeStub = stub(
+      { parse: formatModule.displayItemInfoTree },
+      "parse",
+      returnsNext(),
+    );
 
     captureConsoleOutput();
   });
 
   afterEach(() => {
     restoreConsoleOutput();
-    displayItemInfoTreeSpy.restore();
-    (gitModule.testGitRepository as unknown as { restore: () => void }).restore();
+    displayItemInfoTreeStub.restore();
+    (gitModule.testGitRepository as unknown as { restore: () => void })
+      .restore();
     (gitModule.getGitStatus as unknown as { restore: () => void }).restore();
   });
 
@@ -95,8 +95,8 @@ describe("showRepositoryTree", () => {
 
     await showRepositoryTree({ fileSystem: mockFs });
 
-    assert(displayItemInfoTreeSpy.calls.length > 0);
-    const rootCall = displayItemInfoTreeSpy.calls[0].args[0];
+    assert(displayItemInfoTreeStub.calls.length > 0);
+    const rootCall = displayItemInfoTreeStub.calls[0].args[0];
     assertEquals(rootCall.name, "mock_cwd");
     assertEquals(rootCall.type, ItemType.Directory);
     assertEquals(rootCall.children.length, 2);
@@ -116,7 +116,7 @@ describe("showRepositoryTree", () => {
       skipDirectories: ["dir_to_skip"],
     });
 
-    const rootCall = displayItemInfoTreeSpy.calls[0].args[0];
+    const rootCall = displayItemInfoTreeStub.calls[0].args[0];
     assertEquals(rootCall.children.length, 1);
     assertEquals(rootCall.children[0].name, "dir_not_skipped");
   });
@@ -129,7 +129,7 @@ describe("showRepositoryTree", () => {
 
     await showRepositoryTree({ fileSystem: mockFs, depth: 1 });
 
-    const rootCall = displayItemInfoTreeSpy.calls[0].args[0];
+    const rootCall = displayItemInfoTreeStub.calls[0].args[0];
     assertEquals(rootCall.children.length, 1);
     assertEquals(rootCall.children[0].name, "level1");
     assertEquals(rootCall.children[0].children.length, 0);
@@ -143,11 +143,21 @@ describe("showRepositoryTree", () => {
 
     await showRepositoryTree({ fileSystem: mockFs, includeHidden: true });
 
-    const rootCall = displayItemInfoTreeSpy.calls[0].args[0];
+    const rootCall = displayItemInfoTreeStub.calls[0].args[0];
     assertEquals(rootCall.children.length, 3);
-    assert(rootCall.children.some((c: { name: string }) => c.name === ".hidden_file"));
-    assert(rootCall.children.some((c: { name: string }) => c.name === ".hidden_dir"));
-    assert(rootCall.children.some((c: { name: string }) => c.name === "visible_file"));
+    assert(
+      rootCall.children.some((c: { name: string }) =>
+        c.name === ".hidden_file"
+      ),
+    );
+    assert(
+      rootCall.children.some((c: { name: string }) => c.name === ".hidden_dir"),
+    );
+    assert(
+      rootCall.children.some((c: { name: string }) =>
+        c.name === "visible_file"
+      ),
+    );
   });
 
   it("does not include hidden files by default", async () => {
@@ -158,7 +168,7 @@ describe("showRepositoryTree", () => {
 
     await showRepositoryTree({ fileSystem: mockFs });
 
-    const rootCall = displayItemInfoTreeSpy.calls[0].args[0];
+    const rootCall = displayItemInfoTreeStub.calls[0].args[0];
     assertEquals(rootCall.children.length, 1);
     assertEquals(rootCall.children[0].name, "visible_file");
   });
@@ -179,7 +189,10 @@ describe("showRepositoryTree", () => {
   it("handles path not found errors", async () => {
     mockFs.setNotFound("/non_existent_path");
 
-    await showRepositoryTree({ fileSystem: mockFs, path: "/non_existent_path" });
+    await showRepositoryTree({
+      fileSystem: mockFs,
+      path: "/non_existent_path",
+    });
 
     assertStringIncludes(
       consoleErrorOutput.join("\n"),
@@ -205,7 +218,7 @@ describe("showRepositoryTree", () => {
 
     await showRepositoryTree({ fileSystem: mockFs });
 
-    const rootCall = displayItemInfoTreeSpy.calls[0].args[0];
+    const rootCall = displayItemInfoTreeStub.calls[0].args[0];
     const repoItem = rootCall.children.find(
       (c: { name: string }) => c.name === "my_repo",
     );
@@ -218,9 +231,12 @@ describe("showRepositoryTree", () => {
   it("displays a single file", async () => {
     mockFs.addFile("/mock_cwd/my_file.txt", "my_file.txt");
 
-    await showRepositoryTree({ fileSystem: mockFs, path: "/mock_cwd/my_file.txt" });
+    await showRepositoryTree({
+      fileSystem: mockFs,
+      path: "/mock_cwd/my_file.txt",
+    });
 
-    const rootCall = displayItemInfoTreeSpy.calls[0].args[0];
+    const rootCall = displayItemInfoTreeStub.calls[0].args[0];
     assertEquals(rootCall.name, "my_file.txt");
     assertEquals(rootCall.type, ItemType.File);
     assertEquals(rootCall.children.length, 0);
@@ -230,14 +246,17 @@ describe("showRepositoryTree", () => {
     mockFs.addDirectory("/mock_cwd", "mock_cwd");
     mockFs.addDirectory("/mock_cwd/parent_dir", "parent_dir");
     mockFs.addDirectory("/mock_cwd/parent_dir/git_repo", "git_repo");
-    mockFs.addFile("/mock_cwd/parent_dir/git_repo/repo_file.txt", "repo_file.txt");
+    mockFs.addFile(
+      "/mock_cwd/parent_dir/git_repo/repo_file.txt",
+      "repo_file.txt",
+    );
     mockFs.addDirectory("/mock_cwd/parent_dir/regular_dir", "regular_dir");
 
     mockTestGitRepositoryResult = true;
 
     await showRepositoryTree({ fileSystem: mockFs });
 
-    const rootCall = displayItemInfoTreeSpy.calls[0].args[0];
+    const rootCall = displayItemInfoTreeStub.calls[0].args[0];
     const parentDir = rootCall.children.find(
       (c: { name: string }) => c.name === "parent_dir",
     );
