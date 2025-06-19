@@ -1,10 +1,10 @@
 import { type WalkEntry } from "https://deno.land/std@0.224.0/fs/walk.ts";
-import { Logger } from "https://deno.land/std@0.224.0/log/mod.ts";
 import { join, resolve } from "https://deno.land/std@0.224.0/path/mod.ts";
 import { FileSystem } from "./file_system.ts";
 import { displayItemInfoTree } from "./format.ts";
 import { GitService } from "./git.ts";
 import { ItemInfo, ItemType } from "./types.ts";
+import { Logger } from "@std/log/get-logger";
 
 export interface RepositoryTreeOptions {
   path?: string;

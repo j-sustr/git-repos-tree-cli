@@ -1,34 +1,14 @@
 import { assert, assertEquals } from "jsr:@std/assert";
 import { afterEach, beforeEach, describe, it } from "jsr:@std/testing/bdd";
-import { stub } from "jsr:@std/testing/mock";
 
-import * as formatModule from "./format.ts";
-import * as gitModule from "./git.ts";
 import { MockFileSystem } from "./mocks/file_system_mock.ts";
 import { ItemType } from "./types.ts";
+import { RepositoryTree } from "./repo_tree.ts";
+import { getLogger } from "@std/log";
+import { GitService, GitStatus } from "./git.ts";
 
 let mockTestGitRepositoryResult: boolean;
-let mockGetGitStatusResult: gitModule.GitStatus;
-
-let originalConsoleLog: typeof console.log;
-let originalConsoleWarn: typeof console.warn;
-let originalConsoleError: typeof console.error;
-
-const captureConsoleOutput = () => {
-  originalConsoleLog = console.log;
-  originalConsoleWarn = console.warn;
-  originalConsoleError = console.error;
-
-  console.log = () => {};
-  console.warn = () => {};
-  console.error = () => {};
-};
-
-const restoreConsoleOutput = () => {
-  console.log = originalConsoleLog;
-  console.warn = originalConsoleWarn;
-  console.error = originalConsoleError;
-};
+let mockGetGitStatusResult: GitStatus;
 
 describe("showRepositoryTree", () => {
   let mockFs: MockFileSystem;
@@ -47,26 +27,28 @@ describe("showRepositoryTree", () => {
       aheadBy: 0,
       hasWorkingChanges: false,
     };
-
-    displayItemInfoTreeStub = stub(
-      formatModule,
-      "displayItemInfoTree",
-    );
-
-    captureConsoleOutput();
   });
 
   afterEach(() => {
-    restoreConsoleOutput();
+  
   });
 
   it("displays a simple directory structure", async () => {
+    const repoTree = new RepositoryTree(
+      getLogger("repo_tree_test"),
+      mockFs,
+      new GitService(
+        getLogger("git_service_test"),
+        mockFs
+      )
+    );
+
     mockFs.addDirectory("/mock_cwd", "mock_cwd");
     mockFs.addDirectory("/mock_cwd/dir1", "dir1");
     mockFs.addFile("/mock_cwd/dir1/file1.txt", "file1.txt");
     mockFs.addDirectory("/mock_cwd/dir2", "dir2");
 
-    await showRepositoryTree({ fileSystem: mockFs });
+    await repoTree.showRepositoryTree({ fileSystem: mockFs });
 
     assert(displayItemInfoTreeStub.calls.length > 0);
     const rootCall = displayItemInfoTreeStub.calls[0].args[0];
