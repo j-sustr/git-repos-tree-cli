@@ -10,7 +10,7 @@ function formatRepoLevelItem(item: ItemInfo): [string, string] {
     case ItemType.File:
       return [item.name, "color: black;"];
     case ItemType.Directory:
-      return [item.name, "color: white;"];
+      return [item.name, "color: blue;"];
     case ItemType.RepoDirectory:
       return formatRepoItem(item);
     default:
