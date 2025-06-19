@@ -1,5 +1,5 @@
 import { parseArgs } from "@std/cli/parse-args";
-import { showRepositoryTree } from "./repo_tree.ts";
+import { showRepositoryTree } from "../src/repo_tree.ts";
 
 
 const args = parseArgs(Deno.args, {
